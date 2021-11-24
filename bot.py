@@ -25,6 +25,13 @@ bot.artistFound = True
 bot.songFound = True
 
 queue = []
+class QueueItem:
+    def __init__(self, url, ytPlayer, author):
+        self.url = url
+        self.ytPlayer = ytPlayer
+        self.author = author
+
+
 
 def checkAnswer(msg, answer, precision=0.25):
     nWordsAnswers = len(answer.split(" "))
@@ -86,16 +93,23 @@ class GameInfo:
 @bot.command(name='help')
 async def help(ctx):
     await ctx.channel.send(">>> Bot commands : \n"
-        + " - !init [voice channel] [main text channel] [guess text channel] : initialize blind test \n"
+        + " **#### Blind Test Commands #####**\n"
+        + " - !init [voice channel] [guess text channel] : initialize blind test \n"
         + " - !start : start the game (This is absolutely not useless, this is pretty and looks professional)\n"
         + " - !play [url] [artist] [song] : play a song for the blind test\n"
-        + " - !currentplayer : get the current player\n"
-        + " - !skip : skip the current player\n"
+        + " - !currentPlayer : get the current player\n"
+        + " - !skipPlayer : skip the current player\n"
         + " - !score : get the scores\n"
-        + " - !add [player] : add a player to the game\n"
-        + " - !remove [player] : remove a player from the game\n"
+        + " - !addPlayer [player] : add a player to the game\n"
+        + " - !removePlayer [player] : remove a player from the game\n"
+        + "\n"
+        + " **#### Music Commands #####**\n"
+        + " - !yt [url] : play a youtube video in your voice channel\n"
+        + " - !queue [url]: add a song to the queue\n"
+        + " - !playQueue : play the queue\n"
+        + " - !getQueue : display the current queue\n"
         + " - !stop : stop the music\n"
-        + " - !yt [url] : play a youtube video in your voice channel\n")
+)
 
 
 @bot.event
@@ -195,7 +209,7 @@ async def getScore(ctx):
 
     await ctx.channel.send(s)
 
-@bot.command(name='add')
+@bot.command(name='addPlayer', aliases=['addplayer'])
 async def addPlayer(ctx, user):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
@@ -222,7 +236,7 @@ async def addPlayer(ctx, user):
     # else:
     #     await ctx.channel.send(f"Player {user} is already in the list of players")
 
-@bot.command(name='remove')
+@bot.command(name='removePlayer', aliases=['removeplayer'])
 async def removePlayer(ctx, user):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
@@ -252,7 +266,7 @@ async def startGame(ctx):
     await ctx.channel.send(f"It's {bot.info.getcurrentPlayer()} turn !")
 
 
-@bot.command(name='currentplayer')
+@bot.command(name='currentPlayer', aliases=['currentplayer'])
 async def currentPlayer(ctx):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
@@ -260,7 +274,7 @@ async def currentPlayer(ctx):
         
     await ctx.channel.send(f"It's {bot.info.getcurrentPlayer()} turn !")
 
-@bot.command(name='skip')
+@bot.command(name='skipPlayer', aliases=['skipplayer'])
 async def skipPlayer(ctx):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
@@ -316,37 +330,48 @@ async def on_message(message):
             await message.channel.send(f"It's {bot.info.getcurrentPlayer()} turn !")
 
 
-@bot.command(name = "addToQueue", pass_context=True)
+@bot.command(name = "queue", pass_context=True)
 async def queueSong(context, url):
-    print("addToQueue")
-    queue.append(url)
+    user = context.message.author
+
+    ytPlayer = await YTDLSource.from_url(url, loop=bot.loop)
+
+    print("Added {} to queue".format(ytPlayer.title))
+
+    queue.append(QueueItem(url, ytPlayer, user))
 
 
 @bot.command(name = "yt", pass_context=True)
-async def testYt(context, url):
+async def playYt(context, url):
+    global voiceClient
+
+
     user = context.message.author
-    voiceChannel = user.voice.channel
-    
-    ytplayer = await YTDLSource.from_url(url, loop=bot.loop)
 
-    ## Check if we're already connected
-    for client in bot.voice_clients:
-        if client.channel.id == voiceChannel.id:
-            await client.disconnect()
+    ytPlayer = await YTDLSource.from_url(url, loop=bot.loop)
 
-    vc = await voiceChannel.connect()
+    queue.insert(0, QueueItem(url, ytPlayer, user))
 
-    await context.send('Now playing: {}'.format(ytplayer.title))    
-    vc.play(ytplayer, after=lambda e: print('Player error: %s' % e) if e else None)
-    while vc.is_playing():
-        await asyncio.sleep(1)
+    if(voiceClient != None and playingQueueActive):
+        voiceClient.stop()
+    else:
+        await playQueue(context)
 
-    ytplayer.close()
-    await vc.disconnect()
 
-@bot.command(name = "playQueue", pass_context=True)
+
+playingQueueActive = False
+voiceClient = None
+@bot.command(name = "playQueue", pass_context=True, aliases=['playqueue'])
 async def playQueue(context):
     print("playQueue")
+    global voiceClient
+    global playingQueueActive
+
+    # Only allow one instance of this function to be used at a time
+    if(playingQueueActive == True):
+        return
+    playingQueueActive = True
+    
 
     user = context.message.author
     voiceChannel = user.voice.channel
@@ -354,23 +379,53 @@ async def playQueue(context):
 
     while(len(queue) != 0):
 
-        url = queue.pop()
-        ytplayer = await YTDLSource.from_url(url, loop=bot.loop)
+        queueElement = queue.pop(0)
+        # ytPlayer = await YTDLSource.from_url(url, loop=bot.loop)
+
+        ytPlayer = queueElement.ytPlayer
 
         ## Check if we're already connected
+        connected = False
         for client in bot.voice_clients:
             if client.channel.id == voiceChannel.id:
-                await client.disconnect()
+                # await client.disconnect()
+                connected = True
 
-        vc = await voiceChannel.connect()
+        if(connected == False or voiceClient == None):
+            voiceClient = await voiceChannel.connect()
 
-        await context.send('Now playing: {}'.format(ytplayer.title))    
-        vc.play(ytplayer, after=lambda e: print('Player error: %s' % e) if e else None)
-        while vc.is_playing():
+        if(voiceClient.is_playing()):
+            voiceClient.stop()
+
+        await context.send('Now playing: {}'.format(ytPlayer.title))    
+        voiceClient.play(ytPlayer, after=lambda e: print('Player error: %s' % e) if e else None)
+        while voiceClient.is_playing():
             await asyncio.sleep(1)
 
-        ytplayer.close()
-        await vc.disconnect()
+        print("stopped")
+
+        ytPlayer.close()
+
+        if(len(queue) == 0):
+            await voiceClient.disconnect()
+    
+    playingQueueActive = False
+
+
+@bot.command(name = "next", pass_context=True)
+async def nextSongQueue(context):
+    global voiceClient
+
+    if(voiceClient != None):
+        voiceClient.stop()
+
+
+@bot.command(name = "getQueue", pass_context=True, aliases=['getqueue'])
+async def getQueue(context):
+    s = ""
+    for item in queue:
+        s += " - {} ({})\n".format(item.ytPlayer.title, item.author)
+    await context.send("Current Queue : \n" + s)
 
 
 @bot.event
