@@ -1,7 +1,7 @@
 import os
 import random
 import asyncio
-import discord 
+import discord
 import youtube_dl
 
 from ytdl import YTDLSource, getSimpleMusicPlayer
@@ -35,7 +35,7 @@ class QueueItem:
 
 def checkAnswer(msg, answer, precision=0.25):
     nWordsAnswers = len(answer.split(" "))
-    
+
     splitMsg = msg.split(" ")
     nWordsMsg = len(splitMsg)
 
@@ -78,12 +78,12 @@ class GameInfo:
         s = ""
         for user in self.users:
             s += user + ", "
-        
+
         if len(s) > 1:
             s = s[:-2]
 
         return s
-    
+
     def goNextPlayer(self):
         self.currentPlayer = (self.currentPlayer + 1 ) % len(list(self.users.keys()))
 
@@ -120,7 +120,7 @@ async def on_ready():
 async def initBot(ctx, channelName, txtChannelName):
     print("Initializing bot bot")
     channel = discord.utils.get(ctx.guild.channels, name=channelName, type=discord.ChannelType.voice)
-    
+
     if channel == None:
         await ctx.channel.send(f"Voice channel \"{channelName}\" not found !")
         return
@@ -129,15 +129,15 @@ async def initBot(ctx, channelName, txtChannelName):
     if txtChannel == None:
         await ctx.channel.send(f"Text channel \"{txtChannelName}\" not found !")
         return
-    elif txtChannel == ctx.channel : 
+    elif txtChannel == ctx.channel :
         await ctx.channel.send(f"Guess channel cannot be the same as the command channel !")
         return
-    
+
     members = channel.members
     users = {}
     for member in members:
         users[member.name] = 0
-    
+
 
     bot.info = GameInfo(ctx.channel, channel, users, txtChannel)
 
@@ -159,7 +159,7 @@ async def play(ctx, url, *argss):
         return
 
     voiceChannel = bot.info.voiceChannel
-    
+
     args = " ".join(argss)
     s = args.split("-")
     if len(s) != 2:
@@ -202,7 +202,7 @@ async def getScore(ctx):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
         return
-    
+
     s = "The current scores are : \n"
     for key, value in bot.info.users.items():
         s += f" - {key} : {value} points \n"
@@ -241,7 +241,7 @@ async def removePlayer(ctx, user):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
         return
-        
+
     if user not in bot.info.users:
         await ctx.channel.send(f"User {user} not found !")
         return
@@ -261,7 +261,7 @@ async def startGame(ctx):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
         return
-    
+
     await ctx.channel.send(f"Game started with players {bot.info.getUserListString()}")
     await ctx.channel.send(f"It's {bot.info.getcurrentPlayer()} turn !")
 
@@ -271,7 +271,7 @@ async def currentPlayer(ctx):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
         return
-        
+
     await ctx.channel.send(f"It's {bot.info.getcurrentPlayer()} turn !")
 
 @bot.command(name='skipPlayer', aliases=['skipplayer'])
@@ -279,7 +279,7 @@ async def skipPlayer(ctx):
     if bot.info == None:
         await ctx.channel.send(f"The bot needs to be initialized !")
         return
-    
+
     bot.info.goNextPlayer()
     await ctx.channel.send(f"It's {bot.info.getcurrentPlayer()} turn !")
 
@@ -308,18 +308,18 @@ async def on_message(message):
         return
 
     if bot.info != None and bot.info.guessChannel != None and bot.info.guessChannel.id == message.channel.id:
-        
+
         if bot.artistFound == False:
             artistFound = checkAnswer(message.content.lower(), bot.currentArtist)
             # Re-adding bot.artistFound == False for a bit of lazy thread safety
-            if artistFound and bot.artistFound == False: 
+            if artistFound and bot.artistFound == False:
                 bot.artistFound = True
                 await message.channel.send(f"{message.author.name} found the artist ! The artist was : {bot.currentArtist}")
                 addPoint(message.author.name, bot.info.users)
-        
+
         if bot.songFound == False:
             songFound = checkAnswer(message.content.lower(), bot.currentSong)
-            if songFound and bot.songFound == False: 
+            if songFound and bot.songFound == False:
                 bot.songFound = True
                 await message.channel.send(f"{message.author.name} found the song name ! The song was : {bot.currentSong}")
                 addPoint(message.author.name, bot.info.users)
@@ -371,7 +371,7 @@ async def playQueue(context):
     if(playingQueueActive == True):
         return
     playingQueueActive = True
-    
+
 
     user = context.message.author
     voiceChannel = user.voice.channel
@@ -397,7 +397,7 @@ async def playQueue(context):
         if(voiceClient.is_playing()):
             voiceClient.stop()
 
-        await context.send('Now playing: {}'.format(ytPlayer.title))    
+        await context.send('Now playing: {}'.format(ytPlayer.title))
         voiceClient.play(ytPlayer, after=lambda e: print('Player error: %s' % e) if e else None)
         while voiceClient.is_playing():
             await asyncio.sleep(1)
@@ -408,7 +408,7 @@ async def playQueue(context):
 
         if(len(queue) == 0):
             await voiceClient.disconnect()
-    
+
     playingQueueActive = False
 
 

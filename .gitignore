@@ -29,6 +29,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+__pycache__/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -165,5 +166,6 @@ Thumbs.db
 .ionide
 
 *.m4a
+*.m4a.part
 .env
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python

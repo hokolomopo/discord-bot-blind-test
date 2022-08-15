@@ -1,17 +1,18 @@
 # Thanks https://stackoverflow.com/questions/56060614/how-to-make-a-discord-bot-play-youtube-audio
 
 
-import discord 
+import discord
 import youtube_dl
 import os
 import asyncio
+import yt_dlp
 
-youtube_dl.utils.bug_reports_message = lambda: ''
+yt_dlp.utils.bug_reports_message = lambda: ''
 
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'outtmpl': {'default': '%(extractor)s-%(id)s-%(title)s.%(ext)s' },
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -27,7 +28,7 @@ ffmpeg_options = {
     'options': '-vn'
 }
 
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, filename, *, data, volume=0.5):
@@ -60,7 +61,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 os.remove(self.filename)
         except :
             print("Could not delete file " + self.filename)
-        
+
 
 def getSimpleMusicPlayer(filename):
     return discord.FFmpegPCMAudio(filename, **ffmpeg_options)
