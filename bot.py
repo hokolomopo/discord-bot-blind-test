@@ -96,7 +96,7 @@ async def help(ctx):
         + " **#### Blind Test Commands #####**\n"
         + " - !init [voice channel] [guess text channel] : initialize blind test \n"
         + " - !start : start the game (This is absolutely not useless, this is pretty and looks professional)\n"
-        + " - !play [url] [artist] [song] : play a song for the blind test\n"
+        + " - !play [url] [artist] - [song] : play a song for the blind test\n"
         + " - !currentPlayer : get the current player\n"
         + " - !skipPlayer : skip the current player\n"
         + " - !score : get the scores\n"
@@ -336,7 +336,7 @@ async def queueSong(context, url):
 
     ytPlayer = await YTDLSource.from_url(url, loop=bot.loop)
 
-    print("Added {} to queue".format(ytPlayer.title))
+    print("Added '{}' to queue".format(ytPlayer.title))
 
     queue.append(QueueItem(url, ytPlayer, user))
 
@@ -363,7 +363,6 @@ playingQueueActive = False
 voiceClient = None
 @bot.command(name = "playQueue", pass_context=True, aliases=['playqueue'])
 async def playQueue(context):
-    print("playQueue")
     global voiceClient
     global playingQueueActive
 
@@ -401,8 +400,6 @@ async def playQueue(context):
         voiceClient.play(ytPlayer, after=lambda e: print('Player error: %s' % e) if e else None)
         while voiceClient.is_playing():
             await asyncio.sleep(1)
-
-        print("stopped")
 
         ytPlayer.close()
 
